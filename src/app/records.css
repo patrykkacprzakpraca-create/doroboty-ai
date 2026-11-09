@@ -337,3 +337,42 @@
   border-radius: 10px;
   background: var(--gui-canvas);
 }
+
+.record-comparison {
+  overflow-wrap: anywhere;
+}
+.record-comparison > :is([role="status"], [role="alert"]):not(.sr-only),
+.record-comparison + .record-note {
+  margin-top: 20px;
+}
+.record-note {
+  padding-top: 24px;
+  border-top: 1px solid #d8d5d1;
+}
+.record-comparison-details {
+  display: grid;
+  gap: 20px;
+  margin-top: 24px;
+  line-height: 1.65;
+}
+.record-comparison-details h4 {
+  margin-bottom: 6px;
+  font-size: 20px;
+}
+.record-comparison-details :is(ul, ol) {
+  padding-inline-start: 1.4em;
+}
+.record-comparison-details ul {
+  list-style: disc;
+}
+.record-comparison-details ol {
+  list-style: decimal;
+}
+.record-comparison-details li + li {
+  margin-top: 10px;
+}
+.record-comparison-details blockquote {
+  padding-inline-start: 12px;
+  margin-top: 6px;
+  border-inline-start: 1px solid var(--gui-text);
+}

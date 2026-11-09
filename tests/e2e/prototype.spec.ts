@@ -28,7 +28,8 @@ for (const [name, filename] of [
   }) => {
     const external: string[] = [];
     page.on("request", (request) => {
-      if (!request.url().startsWith("http://127.0.0.1:3106")) external.push(request.url());
+      const url = request.url();
+      if (/^https?:/.test(url) && !url.startsWith("http://127.0.0.1:3106/")) external.push(url);
     });
     await choose(page, name);
     await page.goto("/#/app/profil");
@@ -735,7 +736,7 @@ test("process sheet keeps notes across keyboard tabs and saves stage history wit
   await page.getByRole("button", { name: "Proces zakończony", exact: true }).click();
   await expect(page.locator(".record-stage")).toBeFocused();
   await expect(note).toHaveCount(0);
-  await expect(page.locator(".record-actions")).toHaveCount(0);
+  await expect(page.locator(".record-footer .record-actions")).toHaveCount(0);
   await expect(page.locator(".process-timeline li")).toHaveCount(3);
   const accessibility = await new AxeBuilder({ page }).include(".recruiting-record").analyze();
   expect(accessibility.violations).toEqual([]);
@@ -994,4 +995,142 @@ test("candidate snapshot supports custom CV and long content at desktop and mobi
   await expect(page.getByRole("tabpanel", { name: "Odpowiedź", exact: true })).toContainText(
     record.answer,
   );
+});
+
+test("recruiter comparison checks source excerpts, recovers and keeps questions with their gaps", async ({
+  page,
+}) => {
+  const state = initialState();
+  const application = state.applications[0];
+  application.cv = application.cv.replace("25%", "35%");
+  const job = state.jobs.find(({ id }) => id === application.jobId)!;
+  const manualNote = "Pytania do przejrzenia.";
+  const inconsistentQuestion = "O ile skrócił się czas odpowiedzi po wdrożeniu?";
+  const evidence = { source: "answer", quote: "Poprowadziłem badania z użytkownikami" };
+  const result = {
+    requirements: [
+      {
+        requirement: "rozmów z użytkownikami",
+        evidence: [evidence],
+      },
+      {
+        requirement: "i procesów operacyjnych.",
+        evidence: [],
+      },
+    ],
+    questions: [
+      {
+        requirementIndex: 1,
+        text: "Z jakimi procesami operacyjnymi pracowali Państwo bezpośrednio?",
+      },
+      { requirementIndex: 1, text: "Za które etapy tych procesów byli Państwo odpowiedzialni?" },
+      { requirementIndex: 1, text: "Jak mierzyli Państwo skuteczność tych procesów?" },
+    ],
+    inconsistencies: [
+      {
+        summary: "Różne wartości skrócenia czasu odpowiedzi.",
+        evidence: [
+          { source: "answer", quote: "skróciło czas odpowiedzi o 25%" },
+          { source: "cv", quote: "skrócenie czasu odpowiedzi o 35%" },
+        ],
+        question: inconsistentQuestion,
+      },
+    ],
+  };
+  const questions = [...result.questions.map(({ text }) => text), inconsistentQuestion];
+  const expectedNote = `${manualNote}\n\nPytania do kandydata\n- ${questions.join("\n- ")}`;
+  let calls = 0;
+  await page.route("**/api/recruiting-comparison", async (route) => {
+    expect(route.request().postDataJSON()).toEqual({
+      offer: job.description,
+      answer: application.answer,
+      cv: application.cv,
+    });
+    calls++;
+    await route.fulfill({
+      json:
+        calls === 3
+          ? { ...result, questions: [] }
+          : calls === 1
+            ? {
+                ...result,
+                requirements: [
+                  { ...result.requirements[0], evidence: [{ ...evidence, source: "cv" }] },
+                  ...result.requirements.slice(1),
+                ],
+              }
+            : result,
+    });
+  });
+
+  await page.goto("/");
+  await page.evaluate(({ key, raw }) => localStorage.setItem(key, raw), {
+    key: STORAGE_KEY,
+    raw: JSON.stringify(state),
+  });
+  await page.reload();
+  await choose(page, "Karolina Wiśniewska");
+  await page.goto("/#/app/kandydaci/application-example");
+  const note = page.getByLabel("Notatka rekrutacyjna (widoczna pracodawcy)");
+  await note.fill(manualNote);
+  const comparison = page.getByRole("region", { name: "Porównanie" });
+  const generate = comparison.getByRole("button", { name: "Porównaj z wymaganiami" });
+  await generate.focus();
+  await page.keyboard.press("Enter");
+  await expect(comparison.getByRole("alert")).toContainText("Spróbuj ponownie");
+  await expect(generate).toBeFocused();
+  await expect(note).toHaveValue(manualNote);
+  await page.keyboard.press("Enter");
+  await expect(
+    comparison.getByRole("heading", { name: "Potwierdzone w materiałach" }),
+  ).toBeVisible();
+  const quote = comparison.locator("blockquote").filter({ hasText: evidence.quote });
+  await expect(quote.getByText("Aplikacja", { exact: true })).toBeVisible();
+  await expect(quote.getByText(`„${evidence.quote}”`, { exact: true })).toBeVisible();
+  await expect(
+    comparison.getByRole("heading", { name: "Bez potwierdzenia w materiałach" }),
+  ).toBeVisible();
+  await expect(
+    comparison.getByRole("heading", { name: "Niespójności w materiałach" }),
+  ).toBeVisible();
+  await expect(
+    comparison.getByText("Znajomość procesów operacyjnych", { exact: true }),
+  ).toBeVisible();
+  await expect(comparison.locator("ol li")).toHaveCount(4);
+  await expect(note).toHaveValue(expectedNote);
+
+  const regenerate = comparison.getByRole("button", { name: "Wygeneruj ponownie" });
+  await regenerate.click();
+  await expect(comparison.getByRole("alert")).toContainText("ostatni poprawny wynik");
+  await expect(comparison.locator("ol li")).toHaveCount(4);
+  await expect(note).toHaveValue(expectedNote);
+  const editedNote = `Dopisek rekrutera.\n${expectedNote}`;
+  await note.fill(editedNote);
+  await expect(regenerate).toBeEnabled();
+  await regenerate.click();
+  await expect(comparison.getByRole("status")).toHaveText("Porównanie jest gotowe.");
+  await expect(comparison.getByRole("alert")).toHaveCount(0);
+  await expect(note).toHaveValue(editedNote);
+
+  for (const width of [1280, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await comparison.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+      true,
+    );
+  }
+  const accessibility = await new AxeBuilder({ page }).include(".record-comparison").analyze();
+  expect(accessibility.violations).toEqual([]);
+  await page.getByRole("button", { name: "W przeglądzie", exact: true }).click();
+  await expect(page.locator(".process-timeline")).toContainText(inconsistentQuestion);
+
+  await page.reload();
+  await generate.click();
+  await expect(comparison.getByRole("status")).toHaveText("Porównanie jest gotowe.");
+  await expect(comparison.locator("ol li")).toHaveCount(4);
+  await expect(note).toHaveValue(expectedNote.slice(manualNote.length).trimStart());
+
+  await choose(page, "Marek Nowak");
+  await page.goto("/#/app/aplikacje/application-example");
+  await expect(comparison).toHaveCount(0);
+  expect(calls).toBe(5);
 });

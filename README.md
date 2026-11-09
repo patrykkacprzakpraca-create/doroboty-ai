@@ -1,6 +1,6 @@
 # DoRoboty.ai — AIPH3 prototype
 
-A frontend-only job marketplace for participants to extend and test. Built with React, TypeScript and Vite, using Base UI components. The required visual direction for new and changed screens is the accepted Poster People design system.
+A local-first job marketplace for participants to extend and test. Built with React, TypeScript and Vite, using Base UI components. The required visual direction for new and changed screens is the accepted Poster People design system.
 
 ## Design system — start here for UI work
 
@@ -26,7 +26,13 @@ npm run dev
 
 Open http://127.0.0.1:3001. No environment file, account, database or additional service is required. Package installation requires access to the npm registry.
 
-Select Anna or Marek as a candidate, Karolina or Tomasz as an employer, or the instructor. Publish a job, apply, switch person and record the employer decision. Changes survive reload in this browser; settings provide export, import and reset. AI and scores simulate prepared scenarios. Use example CVs only.
+Select Anna or Marek as a candidate, Karolina or Tomasz as an employer, or the instructor. Publish a job, apply, switch person and record the employer decision. Changes survive reload in this browser; settings provide export, import and reset. Job-description proposals and scores simulate prepared scenarios. Use example CVs only.
+
+## Enable recruiter comparison
+
+Use synthetic applications and CVs only. To enable **Porównanie**, set `GEMINI_API_KEY` in the project's ignored `.env.local` file or in the Vite process environment, then restart the local server. The default model is `gemini-3.5-flash-lite`. Set `GEMINI_MODEL` in the same place to select a Gemini model supporting structured outputs.
+
+In **Kandydaci**, open an application and select **Porównaj z wymaganiami**. The local server sends the approved offer description and submitted answer and CV text to Google Gemini. The recruiter reviews the suggested questions before sending them. The comparison works in local Vite dev and preview, while a static host serves the other prototype flows without the endpoint.
 
 ## Build and verify
 

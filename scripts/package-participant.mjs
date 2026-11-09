@@ -18,6 +18,7 @@ if (fs.existsSync(target) && fs.readdirSync(target).length)
 verifyPacket(root);
 const entries = [
   "src",
+  "server",
   "public",
   "tests",
   "package.json",

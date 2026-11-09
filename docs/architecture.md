@@ -1,6 +1,6 @@
 # Architecture
 
-One React/TypeScript application is built by Vite into static files. HashRouter renders routes under /#/; route parameters created in the browser require no hosting rewrites. The running app currently uses local CSS tokens, Timeless font and Base UI primitives. New and changed UI must follow the accepted Poster People [design system](design-system/README.md), adapted into the existing stack; installing its reference did not convert runtime styles. There is no server data/API layer.
+One React/TypeScript application is built by Vite into static files. HashRouter renders routes under /#/; route parameters created in the browser require no hosting rewrites. The running app currently uses local CSS tokens, Timeless font and Base UI primitives. New and changed UI must follow the accepted Poster People [design system](design-system/README.md), adapted into the existing stack; installing its reference did not convert runtime styles. Scenario data has no server storage. The optional recruiter comparison uses a same-origin, loopback-only Vite endpoint in local dev and preview. The server sends approved offer and submitted material text to Google Gemini on explicit request and checks quoted source references before returning results.
 
 ## Data flow
 
