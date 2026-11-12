@@ -17,7 +17,7 @@ Build UI from this system, adapting its anatomy and visual roles into the existi
 
 ## Run
 
-Requirements: **Node.js 24 and npm**.
+Requirements: **Node.js 24.22.3 LTS and npm**. The project pins the Node.js version in `.nvmrc`.
 
 ```sh
 npm ci
@@ -32,7 +32,7 @@ Select Anna or Marek as a candidate, Karolina or Tomasz as an employer, or the i
 
 Use synthetic applications and CVs only. To enable **Porównanie**, set `GEMINI_API_KEY` in the project's ignored `.env.local` file or in the Vite process environment, then restart the local server. The default model is `gemini-3.5-flash-lite`. Set `GEMINI_MODEL` in the same place to select a Gemini model supporting structured outputs.
 
-In **Kandydaci**, open an application and select **Porównaj z wymaganiami**. The local server sends the approved offer description and submitted answer and CV text to Google Gemini. The recruiter reviews the suggested questions before sending them. The comparison works in local Vite dev and preview, while a static host serves the other prototype flows without the endpoint.
+In **Kandydaci**, open an application and select **Porównaj z wymaganiami**. The button appears after a loopback Vite server confirms that Gemini is configured. On click, the server sends the approved offer description and submitted answer and CV text to Google Gemini. The recruiter reviews the suggested questions before sending them. The local process permits one comparison at a time, five starts per rolling minute and 30 per rolling hour. The limits reset when the server restarts. A public static host shows an explanation and receives no comparison request.
 
 ## Build and verify
 

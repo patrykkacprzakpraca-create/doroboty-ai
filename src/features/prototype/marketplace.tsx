@@ -160,11 +160,7 @@ export function JobsPage() {
                 <br />
                 <span>Z AI w środku.</span>
               </h1>
-              <p>
-                Dla ludzi, którzy tworzą, wdrażają i rozwijają AI.
-                <br />
-                Znajdź rolę, w której zrobisz coś dobrego.
-              </p>
+              <p>To demo rekrutacji. Wybierz fikcyjną ofertę i przećwicz aplikowanie.</p>
             </div>
             <img
               className="pp-people-art"
@@ -417,6 +413,9 @@ export function JobPage() {
               ))}
             </dl>
             <div className="pp-offer-actions">
+              <p className="pp-offer-demo-note">
+                Fikcyjna oferta w demo. Zgłoszenie zostanie w tej przeglądarce.
+              </p>
               {person?.role === "candidate" ? (
                 <>
                   <Link
@@ -446,7 +445,6 @@ export function JobPage() {
               ) : (
                 <p>Aplikacje są dostępne z profilu kandydata.</p>
               )}
-              <p>Prototyp: aplikacja zostaje w tym przeglądarkowym scenariuszu.</p>
             </div>
           </div>
         </aside>

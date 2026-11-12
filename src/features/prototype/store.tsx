@@ -13,17 +13,17 @@ function useStore() {
   const [state, setState] = useState(loaded.state);
   const [issue, setIssue] = useState(loaded.issue);
   const [error, setError] = useState("");
-  const [blocked, setBlocked] = useState(loaded.blocked);
   const latest = useRef(state);
+  const persisted = useRef({ raw: loaded.raw, blocked: loaded.blocked });
   function commit(next: State, replace = false) {
     latest.current = next;
     setState(next);
     setError("");
-    if (blocked && !replace) return;
+    if (persisted.current.blocked && !replace) return;
     try {
-      saveState(browserStorage(), next);
+      const raw = saveState(browserStorage(), next, persisted.current.raw);
+      persisted.current = { raw, blocked: false };
       setIssue("");
-      if (replace) setBlocked(false);
     } catch (e) {
       setIssue((e as Error).message);
     }
@@ -58,7 +58,6 @@ function useStore() {
     state,
     issue,
     error,
-    blocked,
     original: loaded.original,
     run,
     importState,

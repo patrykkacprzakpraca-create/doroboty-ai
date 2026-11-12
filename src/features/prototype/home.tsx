@@ -37,14 +37,13 @@ export default function HomePage() {
         <div className="mx-auto grid max-w-[1360px] gap-12 px-5 py-16 lg:grid-cols-[1.3fr_0.7fr] lg:px-8 lg:py-24">
           <div>
             <Badge variant="secondary" className="px-3 py-1 text-xs">
-              Dobra robota. Z AI w środku.
+              Demo rekrutacji
             </Badge>
             <h1 className="mt-6 max-w-4xl text-5xl leading-[var(--gui-leading-xxl)] font-semibold tracking-[var(--gui-tracking-xs)] sm:text-6xl lg:text-7xl">
               Praca dla ludzi, którzy dowożą z AI.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-              Wyselekcjonowane role, w których AI jest częścią odpowiedzialności, decyzji i wyniku
-              pracy — nie dopiskiem w employer brandingu.
+              Przećwicz rekrutację na fikcyjnych ofertach. Używaj przykładowych danych i CV.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link to="/oferty" className={buttonVariants({ size: "lg" })}>
@@ -92,11 +91,8 @@ export default function HomePage() {
         <div className="mx-auto max-w-[1360px] px-5 py-16 lg:px-8 lg:py-20">
           <div className="flex flex-wrap items-end justify-between gap-5">
             <div>
-              <p className="text-xs font-medium tracking-[var(--gui-tracking-xl)] text-muted-foreground">
-                Aktualne role
-              </p>
               <h2 className="mt-3 text-3xl font-semibold tracking-[var(--gui-tracking-s)] sm:text-4xl">
-                Najnowsze oferty
+                Przykładowe oferty
               </h2>
             </div>
             <Link

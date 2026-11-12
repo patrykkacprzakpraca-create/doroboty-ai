@@ -40,7 +40,7 @@ export function PersonPicker() {
     <section className="prototype-section max-w-4xl">
       <h1>Wybierz osobę</h1>
       <p className="mt-4 mb-8 text-muted-foreground">
-        Wybierz profil, z którego chcesz korzystać w prototypie. Hasło nie jest potrzebne.
+        Wybierz fikcyjny profil, aby przejść przez demo rekrutacji. Hasło nie jest potrzebne.
       </p>
       <div className="grid gap-5 sm:grid-cols-2">
         {people.map((person) => (
@@ -181,6 +181,7 @@ export function ProfilePage({ preview = false }: { preview?: boolean }) {
         </div>
       ) : (
         <form onSubmit={save} className="prototype-panel prototype-form">
+          <p>To profil w demo rekrutacji. Wpisuj wyłącznie fikcyjne dane.</p>
           <Field label="Imię i nazwisko">
             <Input name="name" required maxLength={200} defaultValue={person.name} />
           </Field>
@@ -296,7 +297,10 @@ export function ApplyPage() {
       <BackLink to={`/oferty/${job.slug}`}>Wróć do oferty</BackLink>
       <header className="application-header">
         <h1>Aplikuj na ofertę</h1>
-        <p>Sprawdź ofertę i opowiedz, dlaczego pasujesz do tej roli.</p>
+        <p>
+          To demo rekrutacji. Wpisuj wyłącznie fikcyjne dane. Zgłoszenie zostanie w tej
+          przeglądarce.
+        </p>
       </header>
       <div className="application-layout">
         <ApplicationOfferPreview job={job} />
@@ -361,15 +365,13 @@ export function ApplyPage() {
                 onCheckedChange={(v) => setConsent(v)}
                 aria-invalid={consentInvalid || undefined}
                 aria-describedby={consentInvalid ? "application-consent-error" : undefined}
-                aria-label="Zatwierdzam treść i przesłanie aplikacji"
+                aria-label="Zatwierdzam treść aplikacji z przykładowym CV w scenariuszu demo"
               />
-              <span>
-                Zatwierdzam treść aplikacji i przesłanie profilu oraz przykładowego CV pracodawcy.
-              </span>
+              <span>Zatwierdzam treść aplikacji z przykładowym CV w scenariuszu demo.</span>
             </label>
             {consentInvalid && (
               <p id="application-consent-error" className="error-message" role="alert">
-                Zatwierdź treść aplikacji i jej przesłanie pracodawcy.
+                Zatwierdź treść aplikacji w scenariuszu demo.
               </p>
             )}
             <div className="application-actions">
@@ -380,7 +382,7 @@ export function ApplyPage() {
                 className="application-send"
               >
                 {submitted && <CheckCircle2 aria-hidden="true" />}
-                {submitted ? "Wysłano!" : "Wyślij aplikację"}
+                {submitted ? "Zapisano!" : "Wyślij aplikację"}
               </Button>
               <Button
                 type="button"
@@ -398,10 +400,7 @@ export function ApplyPage() {
               role="status"
               className={submitted || !message ? "sr-only" : "application-save-status"}
             >
-              {submitted ? "Wysłano aplikację. Otwieramy listę Twoich aplikacji." : message}
-            </p>
-            <p className="application-help">
-              Prototyp: aplikacja zostaje w tym przeglądarkowym scenariuszu.
+              {submitted ? "Zapisano aplikację w demo. Otwieramy listę Twoich aplikacji." : message}
             </p>
           </div>
         </form>
@@ -427,7 +426,7 @@ export function ApplicationsPage({ employer = false }: { employer?: boolean }) {
       <PageTitle>{employer ? "Kandydaci" : "Moje aplikacje"}</PageTitle>
       {params.has("wyslano") && (
         <Notice>
-          <CheckCircle2 className="inline size-5" /> Aplikacja została wysłana.
+          <CheckCircle2 className="inline size-5" /> Aplikacja została zapisana w demo.
         </Notice>
       )}
       <Field label={employer ? "Szukaj kandydata lub oferty" : "Szukaj oferty"}>

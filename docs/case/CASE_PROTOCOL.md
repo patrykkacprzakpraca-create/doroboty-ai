@@ -20,7 +20,7 @@ The primary historical outcome is employer continuation after the first conversa
 
 ## Stage-safe distribution
 
-Only baseline evidence ships in this version. No release picker, future-stage generator or hidden later dataset may be bundled. Instructor canonical materials under docs/source and Git history must be excluded from participant distributions. Use package:participant and inspect its output before course release. Hiding data in JavaScript or an operator screen is not access control.
+Only baseline evidence ships in the participant source package. Its CSV is available in local development and excluded from the public static build. No release picker, future-stage generator or hidden later dataset may be bundled. Instructor canonical materials under docs/source and Git history must be excluded from participant distributions. Use package:participant and inspect its output before course release. Hiding data in JavaScript or an operator screen is not access control.
 
 ## Weekly deliverables
 

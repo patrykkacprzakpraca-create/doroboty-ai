@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
 import { z } from "zod";
+import { createComparisonLimit } from "./comparison-limit";
 import {
   comparisonInput,
   comparisonResult,
@@ -137,6 +138,8 @@ export function recruitingComparison(
   key: string | undefined,
   model = "gemini-3.5-flash-lite",
 ): Plugin {
+  const acquireComparison = createComparisonLimit();
+
   async function handle(request: IncomingMessage, response: ServerResponse) {
     const send = (status: number, body: object) => {
       response.writeHead(status, {
@@ -149,12 +152,18 @@ export function recruitingComparison(
     if (
       !["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(request.socket.remoteAddress ?? "") ||
       !host ||
-      !/^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(host) ||
-      request.headers.origin !== `http://${host}`
+      !/^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(host)
     ) {
       return send(403, { error: "forbidden" });
     }
+    const origin = `http://${host}`;
+    if (request.method === "GET") {
+      if (request.headers.origin && request.headers.origin !== origin)
+        return send(403, { error: "forbidden" });
+      return send(200, { available: Boolean(key) });
+    }
     if (request.method !== "POST") return send(405, { error: "method" });
+    if (request.headers.origin !== origin) return send(403, { error: "forbidden" });
     if (request.headers["content-type"] !== "application/json")
       return send(415, { error: "content-type" });
     if (!key) return send(503, { error: "not-configured" });
@@ -162,10 +171,17 @@ export function recruitingComparison(
     const input = await readInput(request).catch(() => null);
     if (!input) return send(400, { error: "invalid-input" });
 
+    const slot = acquireComparison();
+    if ("retryAfter" in slot) {
+      response.setHeader("Retry-After", slot.retryAfter);
+      return send(429, { error: "comparison-limit" });
+    }
     try {
       return send(200, await compare(input, key, model));
     } catch {
       return send(502, { error: "comparison-failed" });
+    } finally {
+      slot.release();
     }
   }
 

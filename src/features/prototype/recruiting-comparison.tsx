@@ -10,6 +10,9 @@ import {
 type ComparisonState =
   { status: "idle" | "loading" | "ready" } | { status: "error"; message: string };
 
+const comparisonUrl = "./api/recruiting-comparison";
+const localHostnames = new Set(["127.0.0.1", "localhost", "[::1]"]);
+
 export function RecruitingComparison({
   input,
   onQuestions,
@@ -20,23 +23,60 @@ export function RecruitingComparison({
   const heading = useId();
   const [state, setState] = useState<ComparisonState>({ status: "idle" });
   const [result, setResult] = useState<ComparisonResult | null>(null);
+  const local = localHostnames.has(window.location.hostname);
+  const hasInput = input !== null;
+  const [availability, setAvailability] = useState<"checking" | "available" | "unavailable">(
+    local ? "checking" : "unavailable",
+  );
   const pending = useRef<AbortController | null>(null);
 
   useEffect(() => () => pending.current?.abort(), []);
+  useEffect(() => {
+    if (!local || !hasInput) return;
+    const request = new AbortController();
+    async function checkAvailability() {
+      try {
+        const response = await fetch(comparisonUrl, {
+          cache: "no-store",
+          redirect: "error",
+          signal: AbortSignal.any([request.signal, AbortSignal.timeout(5000)]),
+        });
+        const available = response.ok && (await response.json())?.available === true;
+        if (!request.signal.aborted) setAvailability(available ? "available" : "unavailable");
+      } catch {
+        if (!request.signal.aborted) setAvailability("unavailable");
+      }
+    }
+    void checkAvailability();
+    return () => request.abort();
+  }, [hasInput, local]);
 
   async function generate() {
-    if (!input || pending.current) return;
+    if (!local || !input || availability !== "available" || pending.current) return;
     const request = new AbortController();
     pending.current = request;
     setState({ status: "loading" });
 
     try {
-      const response = await fetch("./api/recruiting-comparison", {
+      const response = await fetch(comparisonUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
-        signal: request.signal,
+        redirect: "error",
+        signal: AbortSignal.any([request.signal, AbortSignal.timeout(50000)]),
       });
+      if (response.status === 429) {
+        const wait = Number(response.headers.get("Retry-After"));
+        const duration = wait < 60 ? `${Math.ceil(wait)} s` : `${Math.ceil(wait / 60)} min`;
+        setState({
+          status: "error",
+          message:
+            Number.isFinite(wait) && wait > 0
+              ? `Inne porównanie trwa lub limit został osiągnięty. Spróbuj ponownie za co najmniej ${duration}.`
+              : "Inne porównanie trwa lub limit został osiągnięty. Spróbuj ponownie później.",
+        });
+        return;
+      }
       if (response.status === 503 || response.status === 404 || response.status === 405) {
         setState({
           status: "error",
@@ -65,12 +105,26 @@ export function RecruitingComparison({
   return (
     <section className="record-comparison" aria-labelledby={heading}>
       <h3 id={heading}>Porównanie</h3>
-      {input ? (
+      {!input ? (
+        <p className="record-caption">Brak opisu oferty do porównania.</p>
+      ) : availability === "checking" ? (
+        <p className="record-caption" role="status">
+          Sprawdzamy dostępność lokalnego porównania…
+        </p>
+      ) : availability === "unavailable" ? (
+        <p className="record-caption">
+          Porównanie jest dostępne po uruchomieniu projektu lokalnie z włączonym Google Gemini.
+        </p>
+      ) : (
         <>
           <p className="record-caption">
             Zobacz, które wymagania mają potwierdzenie w aplikacji lub CV i na jakich fragmentach
             opiera się porównanie. Jeśli brakuje informacji, dostaniesz propozycje pytań do
             kandydata.
+          </p>
+          <p className="record-caption">
+            Porównanie wysyła do Google Gemini opis oferty, odpowiedź i tekst CV. Używaj wyłącznie
+            fikcyjnych danych.
           </p>
           <div className="record-actions">
             <Button
@@ -83,8 +137,6 @@ export function RecruitingComparison({
             </Button>
           </div>
         </>
-      ) : (
-        <p className="record-caption">Brak opisu oferty do porównania.</p>
       )}
       <p role="status" className={state.status === "loading" ? "record-caption" : "sr-only"}>
         {state.status === "loading" && "Trwa porównywanie materiałów…"}

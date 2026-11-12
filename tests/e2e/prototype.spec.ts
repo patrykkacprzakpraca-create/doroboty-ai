@@ -134,7 +134,9 @@ test("published job → saved offer/draft → submitted application → employer
   await expect(answer).toHaveValue(draftAnswer);
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Wyślij aplikację", exact: true }).click();
-  await expect(page.getByText("Aplikacja została wysłana.", { exact: false })).toBeVisible();
+  await expect(
+    page.getByText("Aplikacja została zapisana w demo.", { exact: false }),
+  ).toBeVisible();
   await page.reload();
   await page.getByRole("link", { name: "Product Designer do automatyzacji", exact: true }).click();
   const candidateUrl = page.url();
@@ -227,6 +229,48 @@ test("invalid import preserves state, valid import replaces state, reset asks fo
     ),
   ).toBe(null);
 });
+test("a downloaded scenario restores a submitted application in a fresh browser profile", async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  await application(page);
+  const applicationLink = page.getByRole("link", { name: "AI Product Manager", exact: true });
+  await expect(applicationLink).toBeVisible();
+  await page.goto("/#/app/settings");
+  const downloading = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Eksportuj dane" }).click();
+  const download = await downloading;
+  const backup = await readFile((await download.path())!);
+
+  const fresh = await browser.newContext({ baseURL });
+  try {
+    const restored = await fresh.newPage();
+    await choose(restored, "Anna Kowalska");
+    await restored.goto("/#/app/aplikacje");
+    const restoredLink = restored.getByRole("link", { name: "AI Product Manager", exact: true });
+    await expect(restoredLink).toHaveCount(0);
+
+    await restored.goto("/#/app/settings");
+    await restored.getByLabel("Importuj plik scenariusza").setInputFiles({
+      name: download.suggestedFilename(),
+      mimeType: "application/json",
+      buffer: backup,
+    });
+    await restored.getByRole("button", { name: "Importuj", exact: true }).click();
+    await expect(restored.getByText("Dane zostały zaimportowane.")).toBeVisible();
+    await restored.goto("/#/app/aplikacje");
+    await restoredLink.click();
+    await restored.reload();
+    await restored.getByRole("tab", { name: "Odpowiedź", exact: true }).click();
+    await expect(restored.getByRole("tabpanel", { name: "Odpowiedź", exact: true })).toContainText(
+      "Zaprojektowałam proces automatyzacji i przeprowadziłam badania użytkowników.",
+    );
+  } finally {
+    await fresh.close();
+  }
+});
+
 test("unreadable save stays untouched while the user works in memory", async ({ page }) => {
   await page.goto("/");
   await page.evaluate((key) => localStorage.setItem(key, '{"version":999}'), STORAGE_KEY);
@@ -333,13 +377,13 @@ test("application submission explains short answers and missing approval without
   await expect(answer).toHaveValue("krótka odpowiedź");
   await answer.fill("Moje doświadczenie pasuje do odpowiedzialności opisanej w tej ofercie.");
   await send.click();
-  await expect(page.getByRole("alert")).toHaveText(
-    "Zatwierdź treść aplikacji i jej przesłanie pracodawcy.",
-  );
+  await expect(page.getByRole("alert")).toHaveText("Zatwierdź treść aplikacji w scenariuszu demo.");
   await expect(page.getByRole("checkbox")).toBeFocused();
   await page.getByRole("checkbox").check();
   await send.click();
-  await expect(page.getByText("Aplikacja została wysłana.", { exact: false })).toBeVisible();
+  await expect(
+    page.getByText("Aplikacja została zapisana w demo.", { exact: false }),
+  ).toBeVisible();
 });
 
 for (const width of [1440, 375]) {
@@ -423,7 +467,9 @@ for (const width of [1440, 375]) {
     await page.keyboard.press("Space");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Enter");
-    await expect(page.getByText("Aplikacja została wysłana.", { exact: false })).toBeVisible();
+    await expect(
+      page.getByText("Aplikacja została zapisana w demo.", { exact: false }),
+    ).toBeVisible();
     expect(
       await page.evaluate(
         (key) => JSON.parse(localStorage.getItem(key)!).applications.at(-1),
@@ -862,7 +908,7 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
     await page.clock.install({ time: new Date("2026-11-03T10:00:00Z") });
     await page.clock.pauseAt(new Date("2026-11-03T10:00:01Z"));
     await page.getByRole("button", { name: "Wyślij aplikację", exact: true }).click();
-    await expect(page.getByRole("button", { name: "Wysłano!", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Zapisano!", exact: true })).toBeDisabled();
     await expect(answer).toBeDisabled();
     if (reducedMotion === "no-preference") {
       await expect(page.locator(".confetti-burst")).toHaveAttribute("aria-hidden", "true");
@@ -1041,6 +1087,11 @@ test("recruiter comparison checks source excerpts, recovers and keeps questions 
   const expectedNote = `${manualNote}\n\nPytania do kandydata\n- ${questions.join("\n- ")}`;
   let calls = 0;
   await page.route("**/api/recruiting-comparison", async (route) => {
+    if (route.request().method() === "GET") {
+      expect(route.request().postData()).toBeNull();
+      await route.fulfill({ json: { available: true } });
+      return;
+    }
     expect(route.request().postDataJSON()).toEqual({
       offer: job.description,
       answer: application.answer,
@@ -1133,4 +1184,130 @@ test("recruiter comparison checks source excerpts, recovers and keeps questions 
   await page.goto("/#/app/aplikacje/application-example");
   await expect(comparison).toHaveCount(0);
   expect(calls).toBe(5);
+});
+
+test("public demo identifies direct offer and form, and sends no comparison request", async ({
+  page,
+  baseURL,
+}) => {
+  const demo = "https://public-demo.example.test";
+  const comparisonRequests: string[] = [];
+  await page.route(`${demo}/**`, async (route) => {
+    const { pathname } = new URL(route.request().url());
+    if (pathname.startsWith("/api/")) {
+      comparisonRequests.push(route.request().method());
+      await route.fulfill({ json: { available: true } });
+      return;
+    }
+    await route.fulfill({ response: await route.fetch({ url: new URL(pathname, baseURL).href }) });
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(demo);
+  await expect(page.getByText("Demo rekrutacji", { exact: true })).toBeVisible();
+  await page.goto(`${demo}/#/oferty/ai-product-manager`);
+  await expect(page.getByText("Fikcyjna oferta w demo.", { exact: false })).toBeVisible();
+  await page.getByRole("link", { name: "Wybierz osobę i aplikuj" }).click();
+  await page.getByRole("button", { name: "Wejdź jako Anna Kowalska", exact: true }).click();
+  await expect(page.getByText("Wpisuj wyłącznie fikcyjne dane.", { exact: false })).toBeVisible();
+  await expect(page.getByLabel("Dlaczego pasujesz do tej roli?")).toBeVisible();
+
+  await page.goto(`${demo}/#/auth/sign-in`);
+  await page.getByRole("button", { name: "Wejdź jako Karolina Wiśniewska", exact: true }).click();
+  await page.goto(`${demo}/#/app/kandydaci/application-example`);
+  const comparison = page.getByRole("region", { name: "Porównanie" });
+  await expect(comparison).toContainText("lokalnie z włączonym Google Gemini");
+  await expect(comparison.getByRole("button")).toHaveCount(0);
+  expect(comparisonRequests).toEqual([]);
+});
+
+test("loopback without comparison checks availability without sending materials", async ({
+  page,
+}) => {
+  const requests: (string | null)[] = [];
+  await page.route("**/api/recruiting-comparison", async (route) => {
+    requests.push(route.request().postData());
+    await route.fulfill({ status: 404, body: "Not found" });
+  });
+  await choose(page, "Karolina Wiśniewska");
+  await page.goto("/#/app/kandydaci/application-example");
+  const comparison = page.getByRole("region", { name: "Porównanie" });
+  await expect(comparison).toContainText("lokalnie z włączonym Google Gemini");
+  await expect(comparison.getByRole("button")).toHaveCount(0);
+  expect(requests).toEqual([null]);
+});
+
+test("public build keeps the exercise CSV in the course materials", async ({ page, request }) => {
+  await choose(page, "Prowadzący");
+  await expect(
+    page.getByText("Plik z danymi do analizy otrzymasz w materiałach szkoleniowych."),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Pobierz dane etapu początkowego" })).toHaveCount(0);
+  for (const path of ["/case/baseline.csv", "/docs/case/baseline.csv"]) {
+    const response = await request.get(path);
+    expect(response.headers()["content-type"] ?? "").not.toContain("text/csv");
+    expect(await response.text()).not.toContain("employerContinued");
+  }
+});
+
+test("recruiter comparison explains a wait when the local limit is reached", async ({ page }) => {
+  let attempts = 0;
+  await page.route("**/api/recruiting-comparison", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ json: { available: true } });
+    } else {
+      attempts++;
+      await route.fulfill({ status: 429, headers: { "Retry-After": "120" }, json: {} });
+    }
+  });
+  await choose(page, "Karolina Wiśniewska");
+  await page.goto("/#/app/kandydaci/application-example");
+  const note = page.getByLabel("Notatka rekrutacyjna (widoczna pracodawcy)");
+  await note.fill("Fikcyjna notatka rekrutera.");
+  const comparison = page.getByRole("region", { name: "Porównanie" });
+  const generate = comparison.getByRole("button", { name: "Porównaj z wymaganiami" });
+  await generate.focus();
+  await page.keyboard.press("Enter");
+  await expect(comparison.getByRole("alert")).toContainText(
+    "Spróbuj ponownie za co najmniej 2 min.",
+  );
+  await expect(note).toHaveValue("Fikcyjna notatka rekrutera.");
+  await expect(generate).toBeFocused();
+  expect(attempts).toBe(1);
+});
+
+test("a stale tab preserves the other tab's save and can export its own edits", async ({
+  context,
+  page,
+}) => {
+  await choose(page, "Anna Kowalska");
+  await page.goto("/#/app/profil");
+  const other = await context.newPage();
+  await other.goto("/#/app/profil");
+  await expect(other.getByLabel("Imię i nazwisko")).toHaveValue("Anna Kowalska");
+
+  await page.getByLabel("Imię i nazwisko").fill("Anna z pierwszej karty");
+  await page.getByRole("button", { name: "Zapisz profil" }).click();
+  await expect
+    .poll(() =>
+      page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).people[0].name, STORAGE_KEY),
+    )
+    .toBe("Anna z pierwszej karty");
+
+  await other.getByLabel("Lokalizacja").fill("Miasto z drugiej karty");
+  await other.getByRole("button", { name: "Zapisz profil" }).click();
+  await expect(
+    other.getByText("Zapis scenariusza zmienił się w innej karcie.", { exact: false }),
+  ).toBeVisible();
+  await other.getByRole("link", { name: "Ustawienia danych", exact: true }).click();
+  const downloading = other.waitForEvent("download");
+  await other.getByRole("button", { name: "Eksportuj dane" }).click();
+  const download = await downloading;
+  const exported = JSON.parse(await readFile((await download.path())!, "utf8"));
+  expect(exported.people[0].location).toBe("Miasto z drugiej karty");
+
+  await other.goto("/#/app/profil");
+  await other.reload();
+  await expect(other.getByLabel("Imię i nazwisko")).toHaveValue("Anna z pierwszej karty");
+  await expect(other.getByLabel("Lokalizacja")).not.toHaveValue("Miasto z drugiej karty");
 });

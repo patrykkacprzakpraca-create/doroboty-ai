@@ -124,9 +124,12 @@ export function PrivacyPage() {
           ani poufnych informacji.
         </p>
         <p>
-          Profile, aplikacje i ustawienia pozostają w pamięci tej przeglądarki. Aplikacja nie wysyła
-          ich do bazy, dostawcy AI ani systemu analitycznego. Plik eksportu zawiera cały lokalny
-          scenariusz, w tym notatki.
+          Publiczne demo zapisuje profile, aplikacje i ustawienia w tej przeglądarce. Plik eksportu
+          zawiera cały lokalny scenariusz, w tym notatki.
+        </p>
+        <p>
+          Jeśli uruchamiasz projekt lokalnie z włączonym Gemini, przycisk porównania wysyła do
+          Google opis oferty, odpowiedź i tekst CV. Używaj wyłącznie fikcyjnych materiałów.
         </p>
         <p>
           Możesz usunąć zmiany przyciskiem „Resetuj scenariusz” w ustawieniach lub wyczyścić dane

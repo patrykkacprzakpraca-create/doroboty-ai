@@ -181,6 +181,12 @@
   line-height: 1.6;
   margin-top: 15px;
 }
+.pp-offer-actions > .pp-offer-demo-note {
+  color: var(--pp-ink);
+  font-size: 14px;
+  margin: 0 0 12px;
+  text-align: left;
+}
 .pp-offer-description {
   grid-area: description;
   min-width: 0;

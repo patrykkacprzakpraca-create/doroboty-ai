@@ -46,7 +46,8 @@ export function verifyPacket(root, { pristine = false } = {}) {
     "\n" +
     rows.map((row) => baselineColumns.map((key) => quote(row[key])).join(",")).join("\n") +
     "\n";
-  assert.equal(fs.readFileSync(path.join(root, "public/case/baseline.csv"), "utf8"), csv);
+  assert.equal(fs.readFileSync(path.join(root, "docs/case/baseline.csv"), "utf8"), csv);
+  assert.ok(!fs.existsSync(path.join(root, "public/case/baseline.csv")));
   if (fs.existsSync(path.join(root, "participant-manifest.json"))) {
     const manifest = JSON.parse(
       fs.readFileSync(path.join(root, "participant-manifest.json"), "utf8"),

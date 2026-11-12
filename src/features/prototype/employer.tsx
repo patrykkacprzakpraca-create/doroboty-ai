@@ -139,6 +139,7 @@ export function EmployerJobEditor() {
     <>
       <PageTitle>{existing ? "Edytuj ofertę" : "Nowa oferta"}</PageTitle>
       <form className="prototype-form" onSubmit={publish}>
+        <p>To oferta w demo rekrutacji. Wpisuj wyłącznie fikcyjne dane.</p>
         <Field label="Nazwa stanowiska">
           <Input
             required
@@ -293,6 +294,7 @@ export function CompanyEditor() {
     <>
       <PageTitle>Twoja organizacja</PageTitle>
       <form className="prototype-panel prototype-form" onSubmit={save}>
+        <p>To organizacja w demo rekrutacji. Wpisuj wyłącznie fikcyjne dane.</p>
         <Field label="Nazwa firmy">
           <Input name="name" required maxLength={200} defaultValue={company.name} />
         </Field>

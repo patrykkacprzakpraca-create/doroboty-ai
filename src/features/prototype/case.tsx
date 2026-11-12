@@ -13,13 +13,17 @@ export function CasePage() {
           Dane historyczne są osobnym materiałem dydaktycznym. Twoje działania w prototypie nie
           zmieniają tych wyników.
         </p>
-        <a
-          className="text-[var(--gui-link)] underline"
-          href={`${import.meta.env.BASE_URL}case/baseline.csv`}
-          download
-        >
-          Pobierz dane etapu początkowego
-        </a>
+        {import.meta.env.DEV ? (
+          <a
+            className="text-[var(--gui-link)] underline"
+            href={`${import.meta.env.BASE_URL}docs/case/baseline.csv`}
+            download
+          >
+            Pobierz dane etapu początkowego
+          </a>
+        ) : (
+          <p>Plik z danymi do analizy otrzymasz w materiałach szkoleniowych.</p>
+        )}
       </section>
     </>
   );

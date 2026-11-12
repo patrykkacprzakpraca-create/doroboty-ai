@@ -21,7 +21,7 @@ describe("browser persistence and recovery", () => {
   it("round-trips a complete valid scenario", () => {
     const storage = memory();
     const s = initialState();
-    saveState(storage, s);
+    saveState(storage, s, null);
     expect(readState(storage).state).toEqual(s);
     expect(parseState(serializeState(s))).toEqual(s);
   });
@@ -53,8 +53,20 @@ describe("browser persistence and recovery", () => {
         throw new Error("QuotaExceededError");
       },
     };
-    expect(() => saveState(storage, initialState())).toThrow("Wyeksportuj");
+    expect(() => saveState(storage, initialState(), old)).toThrow("Wyeksportuj");
     expect(storage.getItem()).toBe(old);
+  });
+  it("refuses to overwrite a different snapshot, including when a tab started empty", () => {
+    const storage = memory();
+    const first = initialState();
+    const second = initialState();
+    const stale = readState(storage).raw;
+    first.people[0].name = "Pierwsza karta";
+    const saved = saveState(storage, first, stale);
+    second.people[0].location = "Druga karta";
+    expect(() => saveState(storage, second, stale)).toThrow("w innej karcie");
+    expect(storage.getItem(STORAGE_KEY)).toBe(saved);
+    expect(saveState(storage, second, saved)).toBe(serializeState(second));
   });
   it("rejects invalid references and oversized files", () => {
     const s = initialState();
